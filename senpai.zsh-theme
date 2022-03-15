@@ -1,24 +1,38 @@
-# Senpai
-# by Sergi Barroso
-# https://github.com/hiroru/senpai-zsh
+# Devops-zsh
+# by Ricardo Hincapie and Sergi Barroso
+# https://github.com/ricarhincapie/devops-zsh
 # MIT License
 
 k8s_info() {
   if [ ! -z ${KUBECONFIG} ]; then
     k8s_context=$(awk '/current-context/{print $2}' $KUBECONFIG)
   elif [ -f "$HOME/.kube/config" ]; then
-    k8s_context=$(awk '/current-context/{print $2}' $HOME/.kube/config)
+    k8s_context=$(awk '/current-context/{print $2}' $HOME/.kube/config | awk -F"/" '{print $2}')
   fi
   if [ ! -z ${k8s_context} ]; then
-    echo " ${cyan}⎈ ${k8s_context}%f"
+    echo " ${darkgreen}k8:${k8s_context}%f"
   fi
+}
+
+
+k8_namespace() {
+  k8_namespace=""
+  command -v kubectl >/dev/null 2>&1 && k8_namespace=$(kubectl config get-contexts --no-headers | grep '*' | grep -Eo '\S+$')
+  echo " ${brown}ns:${k8_namespace}%f"
+}
+
+
+prompt_senpai_git() {
+  senpai_git=""
+  git rev-parse --abbrev-ref HEAD>/dev/null 2>/dev/null && senpai_git=$(git rev-parse --abbrev-ref HEAD)
+  echo " ${darkred}(${senpai_git})%f"
 }
 
 aws_info() {
   if [ ! -z ${AWS_PROFILE} ]; then
     echo " ${yellow}ⓦ ${AWS_PROFILE}%f"
   elif [ ! -z ${AWS_DEFAULT_PROFILE} ]; then
-    echo " ${yellow}ⓦ ${AWS_DEFAULT_PROFILE}%f"
+    echo " ${yellow}* ${AWS_DEFAULT_PROFILE}%f"
   fi
 }
 
@@ -52,9 +66,9 @@ set_default() {
   define_var "$varname"  || typeset -g "$varname"="$default_value"
 }
 
-prompt_senpai_git() {
-  [[ -n ${git_info} ]] && print -n " ${(e)git_info[prompt]}"
-}
+#prompt_senpai_git() {
+#  [[ -n ${git_info} ]] && print -n " ${(e)git_info[prompt]}"
+#}
 
 prompt_senpai_virtualenv() {
   [[ -n ${VIRTUAL_ENV} ]] && print -n " (%F{blue}${VIRTUAL_ENV:t}%f)"
@@ -73,14 +87,16 @@ prompt_senpai_setup() {
   # Set default values
   [[ -n ${VIRTUAL_ENV} ]] && export VIRTUAL_ENV_DISABLE_PROMPT=1
   set_default SENPAI_THEME_DARK true
-  set_default SENPAI_SHOW_TIME  true
-  set_default SENPAI_SHOW_USER  true
+  set_default SENPAI_SHOW_TIME  false
+  set_default SENPAI_SHOW_USER  false
   set_default SENPAI_SHOW_PATH  true
   set_default SENPAI_SHOW_GIT   true
   set_default SENPAI_SHOW_K8S   true
   set_default SENPAI_SHOW_AWS   true
-  set_default SENPAI_SHOW_GCP   true
-  set_default SENPAI_SHOW_AZURE true
+  set_default SENPAI_SHOW_GCP   false
+  set_default SENPAI_SHOW_AZURE false
+  set_default SENPAI_SHOW_NAMESPACE true
+
 
   typeset -g blue
   typeset -g brown
@@ -161,30 +177,40 @@ prompt_senpai_setup() {
 
   # Do not print user if it is disabled
 	if [[ $SENPAI_SHOW_USER == true ]]; then
-		PROMPT+="${brown}%n%f"
+		PROMPT+="${yellow}%n%f"
 	fi
 
   # Do not print path if it is disabled
 	if [[ $SENPAI_SHOW_USER == true ]] && [[ $SENPAI_SHOW_PATH == true ]]; then
-		PROMPT+=" in ${blue}%~%f"
+		PROMPT+=" in ${green}%~%f"
 	elif [[ $SENPAI_SHOW_PATH == true ]]; then
-    PROMPT+="${blue}%~%f"
+    PROMPT+="${green}%~%f"
   fi
 
   # Do not print git status if it is disabled
-	if [[ $SENPAI_SHOW_GIT == true ]]; then
-		PROMPT+="\$(prompt_senpai_git)"
-	fi
+#	if [[ $SENPAI_SHOW_GIT == true ]]; then
+#		PROMPT+="\$(prompt_senpai_git)"
+#	fi
+
+  # Do not print git info if it is disabled
+    if [[ $SENPAI_SHOW_GIT == true ]]; then
+      PROMPT+="\$(prompt_senpai_git)"
+    fi
 
   # Do not print virtual env if it is disabled
 	if [[ $SENPAI_SHOW_VIRT == true ]]; then
 		PROMPT+="\$(prompt_senpai_virtualenv)"
 	fi
 
-  # Do not print virtual env if it is disabled
+  # Do not print Kubernetes info if it is disabled
 	if [[ $SENPAI_SHOW_K8S == true ]]; then
 		PROMPT+="\$(k8s_info)"
 	fi
+
+  if [[ $SENPAI_SHOW_NAMESPACE == true ]]; then
+          PROMPT+="\$(k8_namespace)"
+  fi
+
 
   # Do not print virtual env if it is disabled
 	if [[ $SENPAI_SHOW_AWS == true ]]; then
@@ -200,7 +226,7 @@ prompt_senpai_setup() {
 	if [[ $SENPAI_SHOW_AZURE == true ]]; then
 		PROMPT+="\$(azure_info)"
 	fi
-  
+
   # Add the final prompt
   PROMPT+=" %(?.${white}.${darkred})❯%f "
   RPROMPT=''
