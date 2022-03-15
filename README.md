@@ -1,5 +1,5 @@
-# Senpai - 先輩
-Senpai is a ZSH clean prompt theme for Devops.
+# Devops - Zsh
+DevOps is a ZSH to help DevOps work better.
 
 <img src="senpai_cmd_dark_screenshot.png" width="864">
 
