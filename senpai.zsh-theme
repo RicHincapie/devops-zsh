@@ -7,10 +7,14 @@ k8s_info() {
   if [ ! -z ${KUBECONFIG} ]; then
     k8s_context=$(awk '/current-context/{print $2}' $KUBECONFIG)
   elif [ -f "$HOME/.kube/config" ]; then
-    k8s_context=$(awk '/current-context/{print $2}' $HOME/.kube/config | awk -F"/" '{print $2}')
+    if [[ $SENPAI_SHOW_AWS == true ]]; then # We bring the aws context format
+      k8s_context=$(awk '/current-context/{print $2}' $HOME/.kube/config | awk -F"/" '{print $2}')
+    else # We bring gcp context format
+      k8s_context=$(awk '/current-context/{print $2}' $HOME/.kube/config | awk -F"_" '{print $4}')
+    fi
   fi
   if [ ! -z ${k8s_context} ]; then
-    echo " ${darkgreen}k8:${k8s_context}%f"
+    echo " %F${darkgreen}⎈:${k8s_context}%f"
   fi
 }
 
@@ -87,12 +91,12 @@ prompt_senpai_setup() {
   # Set default values
   [[ -n ${VIRTUAL_ENV} ]] && export VIRTUAL_ENV_DISABLE_PROMPT=1
   set_default SENPAI_THEME_DARK true
-  set_default SENPAI_SHOW_TIME  false
+  set_default SENPAI_SHOW_TIME  true
   set_default SENPAI_SHOW_USER  false
   set_default SENPAI_SHOW_PATH  true
-  set_default SENPAI_SHOW_GIT   true
+  set_default SENPAI_SHOW_GIT   false
   set_default SENPAI_SHOW_K8S   true
-  set_default SENPAI_SHOW_AWS   true
+  set_default SENPAI_SHOW_AWS   false
   set_default SENPAI_SHOW_GCP   false
   set_default SENPAI_SHOW_AZURE false
   set_default SENPAI_SHOW_NAMESPACE true
@@ -168,7 +172,7 @@ prompt_senpai_setup() {
 
   # Init PROMPT
   PROMPT=""
-
+  RPROMPT=""
   # Build prompt based on user settings
   # Do not print timestamp if it is disabled
 	if [[ $SENPAI_SHOW_TIME == true ]]; then
@@ -184,7 +188,7 @@ prompt_senpai_setup() {
 	if [[ $SENPAI_SHOW_USER == true ]] && [[ $SENPAI_SHOW_PATH == true ]]; then
 		PROMPT+=" in ${green}%~%f"
 	elif [[ $SENPAI_SHOW_PATH == true ]]; then
-    PROMPT+="${green}%~%f"
+    PROMPT+="${green}%~%f% "
   fi
 
   # Do not print git status if it is disabled
@@ -204,7 +208,8 @@ prompt_senpai_setup() {
 
   # Do not print Kubernetes info if it is disabled
 	if [[ $SENPAI_SHOW_K8S == true ]]; then
-		PROMPT+="\$(k8s_info)"
+		PROMPT+="\$(k8s_info)
+ ${yellow} —————» %f"
 	fi
 
   if [[ $SENPAI_SHOW_NAMESPACE == true ]]; then
@@ -229,7 +234,6 @@ prompt_senpai_setup() {
 
   # Add the final prompt
   PROMPT+=" %(?.${white}.${darkred})❯%f "
-  RPROMPT=''
 }
 
 prompt_senpai_setup "$@"
